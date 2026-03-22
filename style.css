@@ -141,3 +141,25 @@ button:hover {
         margin-left: 180px;
     }
 }
+/* ===== FIX SIDEBAR LINK COLORS ===== */
+.sidebar ul li a {
+    display: block;
+    width: 100%;
+    color: white;
+    text-decoration: none;
+}
+
+/* Remove purple visited color */
+.sidebar ul li a:visited {
+    color: white;
+}
+
+/* Hover effect */
+.sidebar ul li:hover a {
+    color: white;
+}
+
+/* Active menu */
+.sidebar ul li.active {
+    background: #1abc9c;
+}
