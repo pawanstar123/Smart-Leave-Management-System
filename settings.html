@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Settings</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>Admin Panel</h2>
+        <ul>
+            <li><a href="index.html">Dashboard</a></li>
+            <li><a href="users.html">Users</a></li>
+            <li><a href="faculty.html">Faculty</a></li>
+            <li><a href="leaves.html">Leaves</a></li>
+            <li><a href="reports.html">Reports</a></li>
+            <li class="active"><a href="settings.html">Settings</a></li>
+            <li><a href="login.html">Logout</a></li>
+        </ul>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+
+        <!-- Navbar -->
+        <div class="navbar">
+            <h2>Settings</h2>
+        </div>
+
+        <!-- Change Password -->
+        <div class="table-container">
+            <h3>Change Password</h3>
+
+            <form>
+                <input type="password" placeholder="Current Password" required><br><br>
+                <input type="password" placeholder="New Password" required><br><br>
+                <input type="password" placeholder="Confirm Password" required><br><br>
+
+                <button type="submit">Update Password</button>
+            </form>
+        </div>
+
+        <!-- Leave Type Settings -->
+        <div class="table-container">
+            <h3>Manage Leave Types</h3>
+
+            <form id="leaveTypeForm">
+                <input type="text" id="leaveType" placeholder="Enter Leave Type (e.g. Sick)" required><br><br>
+                <button type="submit">Add Leave Type</button>
+            </form>
+
+            <table id="leaveTypeTable">
+                <tr>
+                    <th>Leave Type</th>
+                    <th>Action</th>
+                </tr>
+            </table>
+        </div>
+
+    </div>
+
+    <!-- JS -->
+    <script src="settings.js"></script>
+
+</body>
+</html>
