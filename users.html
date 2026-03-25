@@ -34,14 +34,17 @@
         <div class="table-container">
             <h3>Add New User</h3>
 
-            <form>
+            <!-- ✅ Added ID -->
+            <form id="userForm">
                 <input type="text" placeholder="Enter Name" required><br><br>
                 <input type="email" placeholder="Enter Email" required><br><br>
                 
+                <!-- ✅ Fixed roles (SRS compliant) -->
                 <select required>
                     <option value="">Select Role</option>
-                    <option>User</option>
-                    <option>Faculty</option>
+                    <option>Student</option>
+                    <option>Teacher</option>
+                    <option>Admin</option>
                 </select><br><br>
 
                 <button type="submit">Add User</button>
@@ -52,37 +55,44 @@
         <div class="table-container">
             <h3>All Users</h3>
 
-            <table>
+            <table id="userTable">
                 <tr>
                     <th>Name</th>
                     <th>Email</th>
                     <th>Role</th>
+                    <!-- ✅ Added Status -->
+                    <th>Status</th>
                     <th>Action</th>
                 </tr>
 
                 <tr>
                     <td>Rahul</td>
                     <td>rahul@gmail.com</td>
-                    <td>User</td>
+                    <td>Student</td>
+                    <td>Active</td>
                     <td>
-                        <button>Edit</button>
-                        <button style="background:red;">Delete</button>
+                        <button onclick="toggleStatus(this)">Deactivate</button>
+                        <button style="background:red;" onclick="deleteRow(this)">Delete</button>
                     </td>
                 </tr>
 
                 <tr>
                     <td>Amit</td>
                     <td>amit@gmail.com</td>
-                    <td>Faculty</td>
+                    <td>Teacher</td>
+                    <td>Active</td>
                     <td>
-                        <button>Edit</button>
-                        <button style="background:red;">Delete</button>
+                        <button onclick="toggleStatus(this)">Deactivate</button>
+                        <button style="background:red;" onclick="deleteRow(this)">Delete</button>
                     </td>
                 </tr>
             </table>
         </div>
 
     </div>
+
+    <!-- ✅ Added JS -->
+    <script src="users.js"></script>
 
 </body>
 </html>
