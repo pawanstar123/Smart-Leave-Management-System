@@ -1,11 +1,11 @@
 let facultyList = JSON.parse(localStorage.getItem("facultyList")) || [];
 
-// ✅ Run only if table exists
+// Display on load
 if (document.getElementById("facultyTable")) {
     displayFaculty();
 }
 
-// ✅ Run only if form exists
+// Form submit
 let form = document.getElementById("facultyForm");
 
 if (form) {
@@ -16,10 +16,11 @@ if (form) {
         let email = document.getElementById("email").value;
         let department = document.getElementById("department").value;
 
-        let faculty = { name, email, department };
+        // ✅ Added status
+        let faculty = { name, email, department, status: "Active" };
+
         facultyList.push(faculty);
 
-        // SAVE DATA
         localStorage.setItem("facultyList", JSON.stringify(facultyList));
 
         displayFaculty();
@@ -30,7 +31,6 @@ if (form) {
 function displayFaculty() {
     let table = document.getElementById("facultyTable");
 
-    // ✅ Safety check
     if (!table) return;
 
     table.innerHTML = `
@@ -38,6 +38,7 @@ function displayFaculty() {
             <th>Name</th>
             <th>Email</th>
             <th>Department</th>
+            <th>Status</th>
             <th>Action</th>
         </tr>
     `;
@@ -48,8 +49,14 @@ function displayFaculty() {
                 <td>${f.name}</td>
                 <td>${f.email}</td>
                 <td>${f.department}</td>
+                <td>${f.status || "Active"}</td>
                 <td>
-                    <button onclick="deleteFaculty(${index})" style="background:red;color:white;">Delete</button>
+                    <button onclick="toggleStatus(${index})">
+                        ${f.status === "Inactive" ? "Activate" : "Deactivate"}
+                    </button>
+                    <button onclick="deleteFaculty(${index})" style="background:red;color:white;">
+                        Delete
+                    </button>
                 </td>
             </tr>
         `;
@@ -59,7 +66,20 @@ function displayFaculty() {
 function deleteFaculty(index) {
     facultyList.splice(index, 1);
 
-    // UPDATE STORAGE
+    localStorage.setItem("facultyList", JSON.stringify(facultyList));
+
+    displayFaculty();
+}
+
+// ✅ NEW FUNCTION (SRS IMPORTANT)
+function toggleStatus(index) {
+    if (!facultyList[index].status) {
+        facultyList[index].status = "Active";
+    }
+
+    facultyList[index].status =
+        facultyList[index].status === "Active" ? "Inactive" : "Active";
+
     localStorage.setItem("facultyList", JSON.stringify(facultyList));
 
     displayFaculty();
