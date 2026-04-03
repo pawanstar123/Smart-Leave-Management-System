@@ -96,16 +96,15 @@
     {% set colors = {'Medical':'#3b82f6','Casual':'#a78bfa','Emergency':'#ef4444','Academic':'#10b981'} %}
     {% set total_b = breakdown|sum(attribute='cnt') or 1 %}
     {% for item in breakdown %}
+    {% set pct = ((item.cnt/total_b)*100)|round|int %}
+    {% set color = colors.get(item.leave_type,'#64748b') %}
     <div class="bd-item">
       <div class="bd-top">
         <span class="bd-lbl">{{ item.leave_type }}</span>
         <span class="bd-cnt">{{ item.cnt }} requests</span>
       </div>
       <div class="bd-bar">
-        <div class="bd-fill"
-          style="width:{{ ((item.cnt/total_b)*100)|round|int }}%;
-                 background:{{ colors.get(item.leave_type,'#64748b') }}">
-        </div>
+        <div class="bd-fill" data-pct="{{ pct }}" data-color="{{ color }}"></div>
       </div>
     </div>
     {% else %}
@@ -143,10 +142,15 @@
               title="{{ r.reason }}">{{ r.reason }}</td>
           <td>
             <div style="display:flex;gap:5px">
-              <button class="btn btn-xs btn-view"
-                onclick="openModal({{ r.id }},'{{ r.student_name }}',
-                '{{ r.leave_type }}','{{ r.start_date }}','{{ r.end_date }}',
-                {{ r.total_days }},'{{ r.reason }}','{{ r.department }}')">
+              <button class="btn btn-xs btn-view review-btn"
+                data-id="{{ r.id }}"
+                data-name="{{ r.student_name }}"
+                data-type="{{ r.leave_type }}"
+                data-from="{{ r.start_date }}"
+                data-to="{{ r.end_date }}"
+                data-days="{{ r.total_days }}"
+                data-reason="{{ r.reason | e }}"
+                data-dept="{{ r.department }}">
                 Detail
               </button>
               <!-- Quick Approve -->
@@ -173,5 +177,24 @@
 <script>
 document.getElementById('welcomeDate').textContent =
   new Date().toLocaleDateString('en-IN',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+
+document.addEventListener('DOMContentLoaded', function () {
+  // Apply breakdown bar widths and colors from data attributes
+  document.querySelectorAll('.bd-fill[data-pct]').forEach(function (el) {
+    el.style.width = el.dataset.pct + '%';
+    el.style.background = el.dataset.color;
+  });
+
+  // Wire up quick-action review buttons
+  document.querySelectorAll('.review-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      openModal(
+        btn.dataset.id, btn.dataset.name, btn.dataset.type,
+        btn.dataset.from, btn.dataset.to, btn.dataset.days,
+        btn.dataset.reason, btn.dataset.dept
+      );
+    });
+  });
+});
 </script>
 {% endblock %}
