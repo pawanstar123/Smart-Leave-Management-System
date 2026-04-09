@@ -5,11 +5,11 @@ import mysql.connector
 app = Flask(__name__)
 app.secret_key = "smart_leave_secret_key"
 
-# MySQL connection
 db = None
 cursor = None
 
-try:
+def connect_db():
+    global db, cursor
     db = mysql.connector.connect(
         host="localhost",
         user="root",
@@ -18,39 +18,58 @@ try:
         auth_plugin='mysql_native_password'
     )
     cursor = db.cursor()
+
+def q(sql, vals=None):
+    """Execute a query with auto-reconnect on stale connection."""
+    global db, cursor
+    try:
+        if db is None or not db.is_connected():
+            connect_db()
+        if vals:
+            cursor.execute(sql, vals)
+        else:
+            cursor.execute(sql)
+    except mysql.connector.errors.OperationalError:
+        connect_db()
+        if vals:
+            cursor.execute(sql, vals)
+        else:
+            cursor.execute(sql)
+
+def commit():
+    db.commit()
+
+# Initial connection + migrations
+try:
+    connect_db()
     print("MySQL Connected")
 
+    # users table extra columns
     for col, definition in [
         ("phone",      "VARCHAR(20) DEFAULT ''"),
         ("department", "VARCHAR(100) DEFAULT ''"),
         ("bio",        "TEXT DEFAULT ''"),
     ]:
         try:
-            cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {definition}")
-            db.commit()
+            q(f"ALTER TABLE users ADD COLUMN {col} {definition}")
+            commit()
+        except Exception:
+            pass
+
+    # leaves table extra columns
+    for col, definition in [
+        ("faculty_name", "VARCHAR(100) DEFAULT ''"),
+        ("remarks",      "TEXT DEFAULT ''"),
+    ]:
+        try:
+            q(f"ALTER TABLE leaves ADD COLUMN {col} {definition}")
+            commit()
         except Exception:
             pass
 
 except Exception as e:
     print("MySQL Error:", e)
 
-
-def get_cursor():
-    """Return a fresh cursor, reconnecting if the connection dropped."""
-    global db, cursor
-    try:
-        if db is None or not db.is_connected():
-            db = mysql.connector.connect(
-                host="localhost",
-                user="root",
-                password="Pavan@985",
-                database="leave_system",
-                auth_plugin='mysql_native_password'
-            )
-            cursor = db.cursor()
-    except Exception as e:
-        print("Reconnect error:", e)
-    return cursor
 
 # ── Home ──────────────────────────────────────────────────────────────────────
 @app.route('/')
@@ -61,19 +80,21 @@ def home():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        name = request.form.get('name')
-        email = request.form.get('email')
-        password = request.form.get('password')
-        role = request.form.get('role', 'Student')
+        name     = request.form.get('name', '').strip()
+        email    = request.form.get('email', '').strip()
+        password = request.form.get('password', '').strip()
+        role     = request.form.get('role', 'Student')
 
         if not name or not email or not password:
-            return "Name, email, and password are required."
+            return render_template("register.html", error="All fields are required.")
 
-        cursor.execute(
-            "INSERT INTO users(name, email, password, role) VALUES(%s, %s, %s, %s)",
-            (name, email, password, role)
-        )
-        db.commit()
+        try:
+            q("INSERT INTO users(name, email, password, role) VALUES(%s,%s,%s,%s)",
+              (name, email, password, role))
+            commit()
+        except mysql.connector.errors.IntegrityError:
+            return render_template("register.html", error="Email already registered.")
+
         return redirect('/login')
 
     return render_template("register.html")
@@ -82,17 +103,17 @@ def register():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        email = request.form['email']
+        email    = request.form['email']
         password = request.form['password']
 
-        cursor.execute("SELECT * FROM users WHERE email=%s AND password=%s", (email, password))
+        q("SELECT * FROM users WHERE email=%s AND password=%s", (email, password))
         user = cursor.fetchone()
 
         if user:
-            session['user_id'] = user[0]
-            session['user_name'] = user[1]
+            session['user_id']    = user[0]
+            session['user_name']  = user[1]
             session['user_email'] = user[2]
-            session['role'] = user[4] if len(user) > 4 else 'Student'
+            session['role']       = user[4] if len(user) > 4 else 'Student'
 
             role = session['role']
             if role == 'Admin':
@@ -112,35 +133,31 @@ def logout():
     session.clear()
     return redirect('/login')
 
-# ══════════════════════════════════════════════════════════════════════════════
-# USER ROUTES
-# ══════════════════════════════════════════════════════════════════════════════
+
+# ── USER ROUTES ───────────────────────────────────────────────────────────────
 
 @app.route('/user/dashboard')
 def user_dashboard():
     if 'user_id' not in session:
         return redirect('/login')
 
-    user_id = session['user_id']
-    cursor.execute("SELECT COUNT(*) FROM leaves WHERE user_id=%s", (user_id,))
-    total_leaves = cursor.fetchone()[0]
-
-    cursor.execute("SELECT COUNT(*) FROM leaves WHERE user_id=%s AND status='Approved'", (user_id,))
-    approved_leaves = cursor.fetchone()[0]
-
-    cursor.execute("SELECT COUNT(*) FROM leaves WHERE user_id=%s AND status='Pending'", (user_id,))
-    pending_leaves = cursor.fetchone()[0]
-
-    cursor.execute("SELECT COUNT(*) FROM leaves WHERE user_id=%s AND status='Rejected'", (user_id,))
-    rejected_leaves = cursor.fetchone()[0]
+    uid = session['user_id']
+    q("SELECT COUNT(*) FROM leaves WHERE user_id=%s", (uid,))
+    total = cursor.fetchone()[0]
+    q("SELECT COUNT(*) FROM leaves WHERE user_id=%s AND status='Approved'", (uid,))
+    approved = cursor.fetchone()[0]
+    q("SELECT COUNT(*) FROM leaves WHERE user_id=%s AND status='Pending'", (uid,))
+    pending = cursor.fetchone()[0]
+    q("SELECT COUNT(*) FROM leaves WHERE user_id=%s AND status='Rejected'", (uid,))
+    rejected = cursor.fetchone()[0]
 
     return render_template(
         'user Dashboard/user_dashboard.html',
         user_name=session.get('user_name'),
-        total_leaves=total_leaves,
-        approved_leaves=approved_leaves,
-        pending_leaves=pending_leaves,
-        rejected_leaves=rejected_leaves
+        total_leaves=total,
+        approved_leaves=approved,
+        pending_leaves=pending,
+        rejected_leaves=rejected
     )
 
 @app.route('/user/apply_leave', methods=['GET', 'POST'])
@@ -149,17 +166,11 @@ def apply_leave():
         return redirect('/login')
 
     if request.method == 'POST':
-        leave_type = request.form['leave_type']
-        from_date = request.form['from_date']
-        to_date = request.form['to_date']
-        reason = request.form['reason']
-        user_id = session['user_id']
-
-        cursor.execute(
-            "INSERT INTO leaves (user_id, leave_type, from_date, to_date, reason, status) VALUES (%s, %s, %s, %s, %s, %s)",
-            (user_id, leave_type, from_date, to_date, reason, 'Pending')
-        )
-        db.commit()
+        uid = session['user_id']
+        q("INSERT INTO leaves (user_id, leave_type, from_date, to_date, reason, status) VALUES (%s,%s,%s,%s,%s,'Pending')",
+          (uid, request.form['leave_type'], request.form['from_date'],
+           request.form['to_date'], request.form['reason']))
+        commit()
         return redirect('/user/leave_history')
 
     return render_template('user Dashboard/apply_leave.html')
@@ -169,61 +180,45 @@ def leave_history():
     if 'user_id' not in session:
         return redirect('/login')
 
-    user_id = session['user_id']
-    cursor.execute(
-        "SELECT id, leave_type, from_date, to_date, status FROM leaves WHERE user_id=%s ORDER BY id DESC",
-        (user_id,)
-    )
-    leaves = cursor.fetchall()
-    return render_template('user Dashboard/leave_history.html', leaves=leaves)
+    q("SELECT id, leave_type, from_date, to_date, status FROM leaves WHERE user_id=%s ORDER BY id DESC",
+      (session['user_id'],))
+    return render_template('user Dashboard/leave_history.html', leaves=cursor.fetchall())
 
 @app.route('/user/leave_status')
 def leave_status():
     if 'user_id' not in session:
         return redirect('/login')
 
-    user_id = session['user_id']
-    cursor.execute(
-        "SELECT id, leave_type, from_date, to_date, status, faculty_name, remarks FROM leaves WHERE user_id=%s ORDER BY id DESC",
-        (user_id,)
-    )
-    leave_status_data = cursor.fetchall()
-    return render_template('user Dashboard/leave_status.html', leave_status_data=leave_status_data)
+    q("SELECT id, leave_type, from_date, to_date, status, faculty_name, remarks FROM leaves WHERE user_id=%s ORDER BY id DESC",
+      (session['user_id'],))
+    return render_template('user Dashboard/leave_status.html', leave_status_data=cursor.fetchall())
 
 @app.route('/user/profile', methods=['GET', 'POST'])
 def user_profile():
     if 'user_id' not in session:
         return redirect('/login')
 
-    user_id = session['user_id']
+    uid = session['user_id']
 
     if request.method == 'POST':
         action = request.form.get('action')
 
         if action == 'update_info':
-            name  = request.form['name']
-            email = request.form['email']
-            phone = request.form.get('phone', '')
-            dept  = request.form.get('department', '')
-            bio   = request.form.get('bio', '')
-            cursor.execute(
-                "UPDATE users SET name=%s, email=%s, phone=%s, department=%s, bio=%s WHERE id=%s",
-                (name, email, phone, dept, bio, user_id)
-            )
-            db.commit()
-            session['user_name']  = name
-            session['user_email'] = email
+            q("UPDATE users SET name=%s, email=%s, phone=%s, department=%s, bio=%s WHERE id=%s",
+              (request.form['name'], request.form['email'],
+               request.form.get('phone',''), request.form.get('department',''),
+               request.form.get('bio',''), uid))
+            commit()
+            session['user_name']  = request.form['name']
+            session['user_email'] = request.form['email']
 
         elif action == 'change_password':
-            current_pw  = request.form['current_password']
-            new_pw      = request.form['new_password']
-            confirm_pw  = request.form['confirm_password']
-            cursor.execute("SELECT password FROM users WHERE id=%s", (user_id,))
+            q("SELECT password FROM users WHERE id=%s", (uid,))
             row = cursor.fetchone()
-            if row and row[0] == current_pw:
-                if new_pw == confirm_pw:
-                    cursor.execute("UPDATE users SET password=%s WHERE id=%s", (new_pw, user_id))
-                    db.commit()
+            if row and row[0] == request.form['current_password']:
+                if request.form['new_password'] == request.form['confirm_password']:
+                    q("UPDATE users SET password=%s WHERE id=%s", (request.form['new_password'], uid))
+                    commit()
                     return redirect('/user/profile?pw=success')
                 else:
                     return redirect('/user/profile?pw=mismatch')
@@ -232,39 +227,33 @@ def user_profile():
 
         return redirect('/user/profile')
 
-    # Fetch full profile — gracefully handle missing columns
     try:
-        cursor.execute("SELECT id, name, email, role, phone, department, bio FROM users WHERE id=%s", (user_id,))
+        q("SELECT id, name, email, role, phone, department, bio FROM users WHERE id=%s", (uid,))
         raw = cursor.fetchone()
         user = (raw[0], raw[1], raw[2], raw[3], raw[4] or '', raw[5] or '', raw[6] or '') if raw else None
     except Exception:
-        cursor.execute("SELECT id, name, email, role FROM users WHERE id=%s", (user_id,))
+        q("SELECT id, name, email, role FROM users WHERE id=%s", (uid,))
         raw = cursor.fetchone()
         user = (raw[0], raw[1], raw[2], raw[3], '', '', '') if raw else None
 
     if not user:
         return redirect('/logout')
 
-    # Leave stats for profile
-    cursor.execute("SELECT COUNT(*) FROM leaves WHERE user_id=%s", (user_id,))
-    total_leaves = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM leaves WHERE user_id=%s AND status='Approved'", (user_id,))
-    approved_leaves = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM leaves WHERE user_id=%s AND status='Pending'", (user_id,))
-    pending_leaves = cursor.fetchone()[0]
+    q("SELECT COUNT(*) FROM leaves WHERE user_id=%s", (uid,))
+    total = cursor.fetchone()[0]
+    q("SELECT COUNT(*) FROM leaves WHERE user_id=%s AND status='Approved'", (uid,))
+    approved = cursor.fetchone()[0]
+    q("SELECT COUNT(*) FROM leaves WHERE user_id=%s AND status='Pending'", (uid,))
+    pending = cursor.fetchone()[0]
 
     return render_template(
         'user Dashboard/user_profile.html',
-        user=user,
-        total_leaves=total_leaves,
-        approved_leaves=approved_leaves,
-        pending_leaves=pending_leaves,
-        pw_status=request.args.get('pw')
+        user=user, total_leaves=total, approved_leaves=approved,
+        pending_leaves=pending, pw_status=request.args.get('pw')
     )
 
-# ══════════════════════════════════════════════════════════════════════════════
-# FACULTY ROUTES
-# ══════════════════════════════════════════════════════════════════════════════
+
+# ── FACULTY ROUTES ────────────────────────────────────────────────────────────
 
 def faculty_required():
     return 'user_id' in session and session.get('role') == 'Faculty'
@@ -274,18 +263,16 @@ def faculty_dashboard():
     if not faculty_required():
         return redirect('/login')
 
-    cursor.execute("SELECT COUNT(*) FROM leaves WHERE status='Pending'")
+    q("SELECT COUNT(*) FROM leaves WHERE status='Pending'")
     pending = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM leaves WHERE status='Approved'")
+    q("SELECT COUNT(*) FROM leaves WHERE status='Approved'")
     approved = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM leaves WHERE status='Rejected'")
+    q("SELECT COUNT(*) FROM leaves WHERE status='Rejected'")
     rejected = cursor.fetchone()[0]
 
-    cursor.execute("""
-        SELECT l.id, u.name, l.leave_type, l.from_date, l.to_date, l.status
-        FROM leaves l JOIN users u ON l.user_id = u.id
-        WHERE l.status = 'Pending' ORDER BY l.id DESC LIMIT 10
-    """)
+    q("""SELECT l.id, u.name, l.leave_type, l.from_date, l.to_date, l.status
+         FROM leaves l JOIN users u ON l.user_id = u.id
+         WHERE l.status = 'Pending' ORDER BY l.id DESC LIMIT 10""")
     pending_leaves = cursor.fetchall()
 
     return render_template(
@@ -302,49 +289,36 @@ def faculty_leaves():
 
     status_filter = request.args.get('status', '')
     if status_filter:
-        cursor.execute("""
-            SELECT l.id, u.name, l.leave_type, l.from_date, l.to_date, l.reason, l.status
-            FROM leaves l JOIN users u ON l.user_id = u.id
-            WHERE l.status = %s ORDER BY l.id DESC
-        """, (status_filter,))
+        q("""SELECT l.id, u.name, l.leave_type, l.from_date, l.to_date, l.reason, l.status
+             FROM leaves l JOIN users u ON l.user_id = u.id
+             WHERE l.status = %s ORDER BY l.id DESC""", (status_filter,))
     else:
-        cursor.execute("""
-            SELECT l.id, u.name, l.leave_type, l.from_date, l.to_date, l.reason, l.status
-            FROM leaves l JOIN users u ON l.user_id = u.id ORDER BY l.id DESC
-        """)
-    leaves = cursor.fetchall()
+        q("""SELECT l.id, u.name, l.leave_type, l.from_date, l.to_date, l.reason, l.status
+             FROM leaves l JOIN users u ON l.user_id = u.id ORDER BY l.id DESC""")
+
     return render_template('faculty Dashboard/Faculty_Leave.html',
-                           leaves=leaves, status_filter=status_filter)
+                           leaves=cursor.fetchall(), status_filter=status_filter)
 
 @app.route('/faculty/leave/<int:leave_id>/approve', methods=['POST'])
 def faculty_approve_leave(leave_id):
     if not faculty_required():
         return redirect('/login')
-    remarks = request.form.get('remarks', '')
-    faculty_name = session.get('user_name')
-    cursor.execute(
-        "UPDATE leaves SET status='Approved', faculty_name=%s, remarks=%s WHERE id=%s",
-        (faculty_name, remarks, leave_id)
-    )
-    db.commit()
+    q("UPDATE leaves SET status='Approved', faculty_name=%s, remarks=%s WHERE id=%s",
+      (session.get('user_name'), request.form.get('remarks', ''), leave_id))
+    commit()
     return redirect('/faculty/leaves')
 
 @app.route('/faculty/leave/<int:leave_id>/reject', methods=['POST'])
 def faculty_reject_leave(leave_id):
     if not faculty_required():
         return redirect('/login')
-    remarks = request.form.get('remarks', '')
-    faculty_name = session.get('user_name')
-    cursor.execute(
-        "UPDATE leaves SET status='Rejected', faculty_name=%s, remarks=%s WHERE id=%s",
-        (faculty_name, remarks, leave_id)
-    )
-    db.commit()
+    q("UPDATE leaves SET status='Rejected', faculty_name=%s, remarks=%s WHERE id=%s",
+      (session.get('user_name'), request.form.get('remarks', ''), leave_id))
+    commit()
     return redirect('/faculty/leaves')
 
-# ══════════════════════════════════════════════════════════════════════════════
-# ADMIN ROUTES
-# ══════════════════════════════════════════════════════════════════════════════
+
+# ── ADMIN ROUTES ──────────────────────────────────────────────────────────────
 
 def admin_required():
     return 'user_id' in session and session.get('role') == 'Admin'
@@ -354,31 +328,24 @@ def admin_dashboard():
     if not admin_required():
         return redirect('/login')
 
-    cursor.execute("SELECT COUNT(*) FROM users")
+    q("SELECT COUNT(*) FROM users")
     total_users = cursor.fetchone()[0]
-
-    cursor.execute("SELECT COUNT(*) FROM leaves")
+    q("SELECT COUNT(*) FROM leaves")
     total_leaves = cursor.fetchone()[0]
-
-    cursor.execute("SELECT COUNT(*) FROM leaves WHERE status='Pending'")
+    q("SELECT COUNT(*) FROM leaves WHERE status='Pending'")
     pending_leaves = cursor.fetchone()[0]
-
-    cursor.execute("SELECT COUNT(*) FROM leaves WHERE status='Approved'")
+    q("SELECT COUNT(*) FROM leaves WHERE status='Approved'")
     approved_leaves = cursor.fetchone()[0]
 
-    cursor.execute("""
-        SELECT l.id, u.name, l.leave_type, l.from_date, l.to_date, l.status
-        FROM leaves l JOIN users u ON l.user_id = u.id
-        ORDER BY l.id DESC LIMIT 10
-    """)
+    q("""SELECT l.id, u.name, l.leave_type, l.from_date, l.to_date, l.status
+         FROM leaves l JOIN users u ON l.user_id = u.id
+         ORDER BY l.id DESC LIMIT 10""")
     recent_leaves = cursor.fetchall()
 
     return render_template(
         'admin Dashboard/admin_dashboard.html',
-        total_users=total_users,
-        total_leaves=total_leaves,
-        pending_leaves=pending_leaves,
-        approved_leaves=approved_leaves,
+        total_users=total_users, total_leaves=total_leaves,
+        pending_leaves=pending_leaves, approved_leaves=approved_leaves,
         recent_leaves=recent_leaves
     )
 
@@ -386,43 +353,33 @@ def admin_dashboard():
 def admin_users():
     if not admin_required():
         return redirect('/login')
-
-    cursor.execute("SELECT id, name, email, role FROM users ORDER BY id DESC")
-    users = cursor.fetchall()
-    return render_template('admin Dashboard/admin_users.html', users=users)
+    q("SELECT id, name, email, role FROM users ORDER BY id DESC")
+    return render_template('admin Dashboard/admin_users.html', users=cursor.fetchall())
 
 @app.route('/admin/leaves')
 def admin_leaves():
     if not admin_required():
         return redirect('/login')
-
-    cursor.execute("""
-        SELECT l.id, u.name, l.leave_type, l.from_date, l.to_date, l.reason, l.status
-        FROM leaves l JOIN users u ON l.user_id = u.id
-        ORDER BY l.id DESC
-    """)
-    leaves = cursor.fetchall()
-    return render_template('admin Dashboard/admin_leaves.html', leaves=leaves)
+    q("""SELECT l.id, u.name, l.leave_type, l.from_date, l.to_date, l.reason, l.status
+         FROM leaves l JOIN users u ON l.user_id = u.id ORDER BY l.id DESC""")
+    return render_template('admin Dashboard/admin_leaves.html', leaves=cursor.fetchall())
 
 @app.route('/admin/leave/<int:leave_id>/approve', methods=['POST'])
 def approve_leave(leave_id):
     if not admin_required():
         return redirect('/login')
-
-    cursor.execute("UPDATE leaves SET status='Approved' WHERE id=%s", (leave_id,))
-    db.commit()
+    q("UPDATE leaves SET status='Approved' WHERE id=%s", (leave_id,))
+    commit()
     return redirect('/admin/leaves')
 
 @app.route('/admin/leave/<int:leave_id>/reject', methods=['POST'])
 def reject_leave(leave_id):
     if not admin_required():
         return redirect('/login')
-
-    cursor.execute("UPDATE leaves SET status='Rejected' WHERE id=%s", (leave_id,))
-    db.commit()
+    q("UPDATE leaves SET status='Rejected' WHERE id=%s", (leave_id,))
+    commit()
     return redirect('/admin/leaves')
 
-# ══════════════════════════════════════════════════════════════════════════════
 
 if __name__ == '__main__':
     app.run(debug=True)
