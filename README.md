@@ -3,7 +3,11 @@
 A role-based leave management web app built with Flask and MySQL. Students apply for leaves, faculty review and approve/reject them with remarks, and admins oversee the entire system.
 
 ---
+##  Overview
 
+LeaveOk is a role-based Smart Leave Management System designed to streamline the leave application and approval process in academic institutions.
+
+It provides separate dashboards for Students, Faculty, and Admin, ensuring efficient leave tracking, approval workflows, and system transparency.
 ## Tech Stack
 
 | Layer | Technology |
@@ -176,6 +180,13 @@ Then open `http://127.0.0.1:5000`
 - Consistent dark-sidebar theme across all pages via a single shared CSS file
 
 ---
+## ⚙️ How It Works
+
+1. User registers and logs into the system
+2. Based on role, user is redirected to respective dashboard
+3. Students apply for leave
+4. Faculty reviews and approves/rejects with remarks
+5. Admin monitors overall system activity
 
 ## Notes
 
