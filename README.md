@@ -1,6 +1,6 @@
 # LeaveOk — Smart Leave Management System
 
-A role-based leave management web app built with Flask and MySQL. Students can apply for leaves and track their status, while admins can manage all requests and users.
+A role-based leave management web app built with Flask and MySQL. Students apply for leaves, faculty review and approve/reject them with remarks, and admins oversee the entire system.
 
 ---
 
@@ -21,28 +21,32 @@ A role-based leave management web app built with Flask and MySQL. Students can a
 
 ```
 LeaveOk/
-├── app.py                          # All Flask routes and logic
+├── app.py                              # All Flask routes, DB logic, auto-reconnect
 ├── README.md
 │
 ├── static/
-│   └── style.css                   # Global stylesheet (shared across all pages)
+│   └── style.css                       # Global stylesheet (shared across all pages)
 │
 └── templates/
-    ├── home.html                   # Landing page
-    ├── login.html                  # Login
-    ├── register.html               # Register (Student / Faculty / Admin)
+    ├── home.html                       # Landing page
+    ├── login.html                      # Login
+    ├── register.html                   # Register (Student / Faculty / Admin)
     │
     ├── user Dashboard/
-    │   ├── user_dashboard.html     # Stats + quick actions
-    │   ├── apply_leave.html        # Leave application form
-    │   ├── leave_history.html      # All leave requests table
-    │   ├── leave_status.html       # Status with faculty name & remarks
-    │   └── user_profile.html       # Tabbed profile — info, password, account
+    │   ├── user_dashboard.html         # Stats + quick actions
+    │   ├── apply_leave.html            # Leave application form
+    │   ├── leave_history.html          # All leave requests table
+    │   ├── leave_status.html           # Status with faculty name & remarks
+    │   └── user_profile.html           # Tabbed profile — info, password, account
+    │
+    ├── faculty Dashboard/
+    │   ├── Faculty_Dashboard.html      # Pending stats + quick approve/reject
+    │   └── Faculty_Leave.html          # Full leave table with remarks modal
     │
     └── admin Dashboard/
-        ├── admin_dashboard.html    # System stats + recent leave requests
-        ├── admin_leaves.html       # Full leave table with approve/reject
-        └── admin_users.html        # All registered users
+        ├── admin_dashboard.html        # System stats + approval progress + recent leaves
+        ├── admin_leaves.html           # Full leave table with approve/reject + filters
+        └── admin_users.html            # All registered users with search
 ```
 
 ---
@@ -74,13 +78,13 @@ CREATE TABLE leaves (
     to_date      DATE,
     reason       TEXT,
     status       VARCHAR(20)  DEFAULT 'Pending',
-    faculty_name VARCHAR(100),
-    remarks      TEXT,
+    faculty_name VARCHAR(100) DEFAULT '',
+    remarks      TEXT         DEFAULT '',
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 ```
 
-> The `phone`, `department`, and `bio` columns are added automatically on first run if they don't exist.
+> The `phone`, `department`, `bio`, `faculty_name`, and `remarks` columns are added automatically on first run if they don't exist.
 
 ---
 
@@ -111,34 +115,41 @@ db = mysql.connector.connect(
 )
 ```
 
-**4. Run**
+**4. Run from the project root**
 
 ```bash
+cd "D:\path\to\Smart-Leave-Management-System"
 python app.py
 ```
 
 Then open `http://127.0.0.1:5000`
 
+> Make sure you run `app.py` from the folder that contains the `templates/` and `static/` directories, not from a subfolder.
+
 ---
 
 ## Routes
 
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/` | Landing page |
-| GET/POST | `/register` | Register new user |
-| GET/POST | `/login` | Login |
-| GET | `/logout` | Logout |
-| GET | `/user/dashboard` | User dashboard with leave stats |
-| GET/POST | `/user/apply_leave` | Submit a leave request |
-| GET | `/user/leave_history` | View all personal leave requests |
-| GET | `/user/leave_status` | View status with faculty name & remarks |
-| GET/POST | `/user/profile` | View and edit profile, change password |
-| GET | `/admin/dashboard` | Admin overview — stats + recent requests |
-| GET | `/admin/users` | All registered users |
-| GET | `/admin/leaves` | All leave requests with approve/reject |
-| POST | `/admin/leave/<id>/approve` | Approve a leave |
-| POST | `/admin/leave/<id>/reject` | Reject a leave |
+| Method | Route | Role | Description |
+|--------|-------|------|-------------|
+| GET | `/` | All | Landing page |
+| GET/POST | `/register` | All | Register new user |
+| GET/POST | `/login` | All | Login |
+| GET | `/logout` | All | Logout |
+| GET | `/user/dashboard` | Student | Dashboard with leave stats |
+| GET/POST | `/user/apply_leave` | Student | Submit a leave request |
+| GET | `/user/leave_history` | Student | View all personal leave requests |
+| GET | `/user/leave_status` | Student | Status with faculty name & remarks |
+| GET/POST | `/user/profile` | Student | Edit profile, change password |
+| GET | `/faculty/dashboard` | Faculty | Pending leaves overview + quick actions |
+| GET | `/faculty/leaves` | Faculty | All leaves with search, filter, remarks modal |
+| POST | `/faculty/leave/<id>/approve` | Faculty | Approve a leave with remarks |
+| POST | `/faculty/leave/<id>/reject` | Faculty | Reject a leave with remarks |
+| GET | `/admin/dashboard` | Admin | System stats + approval progress + recent requests |
+| GET | `/admin/users` | Admin | All registered users with search |
+| GET | `/admin/leaves` | Admin | All leave requests with filters |
+| POST | `/admin/leave/<id>/approve` | Admin | Approve a leave |
+| POST | `/admin/leave/<id>/reject` | Admin | Reject a leave |
 
 ---
 
@@ -147,27 +158,29 @@ Then open `http://127.0.0.1:5000`
 | Role | Redirected To | Capabilities |
 |------|--------------|--------------|
 | Student | `/user/dashboard` | Apply leave, view history/status, manage profile |
-| Faculty | `/faculty/dashboard` | _(in progress)_ |
-| Admin | `/admin/dashboard` | View all users, approve/reject all leaves |
+| Faculty | `/faculty/dashboard` | Review all leaves, approve/reject with remarks |
+| Admin | `/admin/dashboard` | View all users, approve/reject all leaves, system overview |
 
 ---
 
 ## Features
 
-- Role-based login — auto-redirects to the correct dashboard
+- Role-based login — auto-redirects to the correct dashboard on sign-in
+- Auto-reconnect DB helper (`q()`) — app stays up even if MySQL connection drops
+- Auto-migration — missing columns added to DB on first run, no manual SQL needed
 - User dashboard with live leave stats (Total / Approved / Pending / Rejected)
-- Leave application form with type, date range, and reason
-- Leave history and detailed status table with faculty remarks
-- Professional profile page — tabbed layout with personal info, password change, and account details
-- Admin can approve or reject any pending leave from the dashboard or leaves page
+- Faculty dashboard with pending count badge in sidebar, remarks modal for approve/reject
+- Admin dashboard with approval progress bars and recent leave activity
+- Live search and status/type filters on all leave tables (client-side, no page reload)
+- Professional profile page — tabbed layout with personal info, password change, account details
 - Consistent dark-sidebar theme across all pages via a single shared CSS file
 
 ---
 
 ## Notes
 
-- Passwords are stored in plain text — hashing with `bcrypt` is recommended before any production use
-- The Faculty dashboard route exists in login redirect logic but the dashboard itself is not yet implemented
+- Passwords are stored in plain text — hashing with `bcrypt` is strongly recommended before any production use
+- Run `app.py` from the project root directory, not from any subfolder, or Flask won't find the `templates/` folder
 
 ---
 
