@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Leave History — LeaveOk</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .stage-wrap { display: flex; align-items: center; gap: 4px; }
+        .stage { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; }
+        .arrow { color: #cbd5e1; font-size: 10px; }
+    </style>
 </head>
 <body>
 <div class="layout">
@@ -37,6 +42,9 @@
             <div class="table-card">
                 <div class="table-card-header">
                     <h3>All Leave Requests</h3>
+                    <div style="font-size:12px;color:#64748b;">
+                        Approval flow: <strong>Faculty</strong> → <strong>Admin</strong>
+                    </div>
                 </div>
                 <table>
                     <thead>
@@ -45,20 +53,30 @@
                             <th>Leave Type</th>
                             <th>From</th>
                             <th>To</th>
-                            <th>Status</th>
+                            <th>Faculty</th>
+                            <th>Admin</th>
+                            <th>Final Status</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for leave in leaves %}
                         <tr>
-                            <td>{{ leave[0] }}</td>
+                            <td style="color:#94a3b8;font-size:13px;">{{ leave[0] }}</td>
                             <td>{{ leave[1] }}</td>
                             <td>{{ leave[2] }}</td>
                             <td>{{ leave[3] }}</td>
                             <td><span class="badge badge-{{ leave[4]|lower }}">{{ leave[4] }}</span></td>
+                            <td>
+                                {% if leave[5] == 'N/A' %}
+                                <span style="color:#94a3b8;font-size:12px;">N/A</span>
+                                {% else %}
+                                <span class="badge badge-{{ leave[5]|lower }}">{{ leave[5] }}</span>
+                                {% endif %}
+                            </td>
+                            <td><span class="badge badge-{{ leave[6]|lower }}">{{ leave[6] }}</span></td>
                         </tr>
                         {% else %}
-                        <tr class="empty-row"><td colspan="5">No leave records found.</td></tr>
+                        <tr class="empty-row"><td colspan="7">No leave records found.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

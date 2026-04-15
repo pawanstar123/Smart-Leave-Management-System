@@ -5,6 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Leave Status — LeaveOk</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .pipeline {
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+        }
+        .pipe-step {
+            display: flex; flex-direction: column; align-items: center;
+            gap: 5px; min-width: 90px;
+        }
+        .pipe-label {
+            font-size: 10px; color: #94a3b8; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .pipe-name {
+            font-size: 11px; color: #64748b; margin-top: 2px; text-align: center;
+        }
+        .pipe-arrow {
+            color: #cbd5e1; font-size: 20px; padding-bottom: 18px;
+        }
+        .remark-box {
+            background: #f8fafc; border-radius: 8px; padding: 10px 14px;
+            flex: 1; min-width: 200px; border-left: 3px solid #4facfe;
+        }
+        .remark-box.rejected { border-left-color: #ef4444; }
+        .remark-title {
+            font-size: 11px; font-weight: 700; color: #64748b;
+            text-transform: uppercase; margin-bottom: 4px;
+        }
+        .remark-text { font-size: 13px; color: #334155; }
+        .badge-na {
+            display: inline-block; padding: 3px 10px; border-radius: 20px;
+            font-size: 12px; font-weight: 600;
+            background: #f1f5f9; color: #94a3b8;
+        }
+    </style>
 </head>
 <body>
 <div class="layout">
@@ -31,41 +65,107 @@
     <div class="main">
         <div class="topbar">
             <h1>Leave Status</h1>
-        </div>
-        <div class="content">
-            <div class="table-card">
-                <div class="table-card-header">
-                    <h3>Status Details</h3>
-                </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Type</th>
-                            <th>From</th>
-                            <th>To</th>
-                            <th>Status</th>
-                            <th>Faculty</th>
-                            <th>Remarks</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for leave in leave_status_data %}
-                        <tr>
-                            <td>{{ leave[0] }}</td>
-                            <td>{{ leave[1] }}</td>
-                            <td>{{ leave[2] }}</td>
-                            <td>{{ leave[3] }}</td>
-                            <td><span class="badge badge-{{ leave[4]|lower }}">{{ leave[4] }}</span></td>
-                            <td>{{ leave[5] if leave[5] else '—' }}</td>
-                            <td>{{ leave[6] if leave[6] else '—' }}</td>
-                        </tr>
-                        {% else %}
-                        <tr class="empty-row"><td colspan="7">No leave records found.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div style="font-size:13px;color:#64748b;">
+                Flow: Student → Faculty → Admin
             </div>
+        </div>
+
+        <div class="content">
+            {#
+                Query columns:
+                [0] id
+                [1] leave_type
+                [2] from_date
+                [3] to_date
+                [4] status          (final)
+                [5] faculty_name
+                [6] faculty_status
+                [7] faculty_remark
+                [8] admin_status
+                [9] admin_remark
+            #}
+            {% for leave in leave_status_data %}
+            <div class="table-card" style="margin-bottom:20px;">
+
+                <!-- Card header: leave type + date range + final badge -->
+                <div class="table-card-header">
+                    <div>
+                        <span style="font-size:14px;font-weight:700;color:#0f172a;">
+                            {{ leave[1] }}
+                        </span>
+                        <span style="font-size:12px;color:#94a3b8;margin-left:10px;">
+                            {{ leave[2] }} &nbsp;→&nbsp; {{ leave[3] }}
+                        </span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="font-size:12px;color:#64748b;">Final:</span>
+                        <span class="badge badge-{{ leave[4]|lower }}">{{ leave[4] }}</span>
+                    </div>
+                </div>
+
+                <!-- Pipeline -->
+                <div style="padding:22px 24px;">
+                    <div class="pipeline">
+
+                        <!-- Step 1: Student -->
+                        <div class="pipe-step">
+                            <div class="pipe-label">Student</div>
+                            <span class="badge badge-approved">Submitted</span>
+                        </div>
+
+                        <div class="pipe-arrow">→</div>
+
+                        <!-- Step 2: Faculty -->
+                        <div class="pipe-step">
+                            <div class="pipe-label">Faculty</div>
+                            <span class="badge badge-{{ leave[6]|lower }}">{{ leave[6] }}</span>
+                            {% if leave[5] %}
+                            <div class="pipe-name">{{ leave[5] }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="pipe-arrow">→</div>
+
+                        <!-- Step 3: Admin -->
+                        <div class="pipe-step">
+                            <div class="pipe-label">Admin</div>
+                            {% if leave[8] == 'N/A' %}
+                            <span class="badge-na">N/A</span>
+                            <div class="pipe-name">Rejected by Faculty</div>
+                            {% else %}
+                            <span class="badge badge-{{ leave[8]|lower }}">{{ leave[8] }}</span>
+                            {% endif %}
+                        </div>
+
+                    </div>
+
+                    <!-- Remarks section -->
+                    {% if leave[7] or (leave[9] and leave[8] not in ('N/A', 'Pending', '')) %}
+                    <div style="margin-top:18px;display:flex;gap:14px;flex-wrap:wrap;">
+                        {% if leave[7] %}
+                        <div class="remark-box {% if leave[6] == 'Rejected' %}rejected{% endif %}">
+                            <div class="remark-title">Faculty Remark</div>
+                            <div class="remark-text">{{ leave[7] }}</div>
+                        </div>
+                        {% endif %}
+                        {% if leave[9] and leave[8] not in ('N/A', 'Pending', '') %}
+                        <div class="remark-box {% if leave[8] == 'Rejected' %}rejected{% endif %}">
+                            <div class="remark-title">Admin Remark</div>
+                            <div class="remark-text">{{ leave[9] }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+
+            </div>
+            {% else %}
+            <div class="table-card">
+                <div style="padding:48px;text-align:center;color:#94a3b8;font-size:14px;">
+                    No leave records found. <a href="/user/apply_leave" style="color:#4facfe;font-weight:600;">Apply for leave →</a>
+                </div>
+            </div>
+            {% endfor %}
         </div>
     </div>
 </div>

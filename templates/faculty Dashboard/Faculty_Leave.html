@@ -6,23 +6,15 @@
     <title>Leave Requests — LeaveOk</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        .user-cell { display: flex; align-items: center; gap: 10px; }
-        .mini-avatar {
-            width: 32px; height: 32px; border-radius: 50%;
-            background: linear-gradient(135deg, #4facfe, #00c6ff);
-            display: flex; align-items: center; justify-content: center;
-            color: white; font-weight: 700; font-size: 12px; flex-shrink: 0;
-        }
-        .action-group { display: flex; gap: 6px; }
-        .filter-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-        .filter-bar input, .filter-bar select {
-            padding: 8px 14px; border: 1.5px solid #e2e8f0;
-            border-radius: 8px; font-size: 13px; color: #1e293b;
-            background: #f8fafc; outline: none; font-family: inherit;
-        }
-        .filter-bar input:focus, .filter-bar select:focus { border-color: #4facfe; background: #fff; }
-        .filter-bar input { width: 200px; }
-        .reason-cell { max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .user-cell{display:flex;align-items:center;gap:10px;}
+        .mini-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#4facfe,#00c6ff);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:12px;flex-shrink:0;}
+        .action-group{display:flex;gap:6px;}
+        .filter-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+        .filter-bar input,.filter-bar select{padding:8px 14px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;color:#1e293b;background:#f8fafc;outline:none;font-family:inherit;}
+        .filter-bar input:focus,.filter-bar select:focus{border-color:#4facfe;background:#fff;}
+        .filter-bar input{width:200px;}
+        .reason-cell{max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .flow-note{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 16px;font-size:13px;color:#1d4ed8;margin-bottom:20px;}
     </style>
 </head>
 <body>
@@ -48,11 +40,16 @@
         <div class="topbar">
             <div>
                 <h1>Leave Requests</h1>
-                <p style="font-size:13px;color:#64748b;margin-top:2px;">Review and manage all student leave applications.</p>
+                <p style="font-size:13px;color:#64748b;margin-top:2px;">Level 1 review — your approval forwards to Admin for final decision.</p>
             </div>
         </div>
 
         <div class="content">
+            <div class="flow-note">
+                📋 Flow: <strong>Student</strong> → <strong>You (Faculty)</strong> → <strong>Admin</strong> &nbsp;|&nbsp;
+                Rejecting here ends the process. Approving forwards to Admin.
+            </div>
+
             <div class="table-card">
                 <div class="table-card-header">
                     <h3>All Leave Requests
@@ -77,7 +74,8 @@
                             <th>From</th>
                             <th>To</th>
                             <th>Reason</th>
-                            <th>Status</th>
+                            <th>Your Decision</th>
+                            <th>Your Remark</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -96,27 +94,24 @@
                             <td>{{ leave[4] }}</td>
                             <td><div class="reason-cell" title="{{ leave[5] }}">{{ leave[5] }}</div></td>
                             <td><span class="badge badge-{{ leave[6]|lower }}">{{ leave[6] }}</span></td>
+                            <td style="font-size:12px;color:#64748b;">{{ leave[7] if leave[7] else '—' }}</td>
                             <td>
                                 {% if leave[6] == 'Pending' %}
                                 <div class="action-group">
-                                    <button class="btn btn-green review-btn"
-                                            style="padding:5px 12px;font-size:12px;"
-                                            data-id="{{ leave[0] }}"
-                                            data-name="{{ leave[1] }}"
-                                            data-action="approve">✓ Approve</button>
-                                    <button class="btn btn-red review-btn"
-                                            style="padding:5px 12px;font-size:12px;"
-                                            data-id="{{ leave[0] }}"
-                                            data-name="{{ leave[1] }}"
-                                            data-action="reject">✕ Reject</button>
+                                    <button class="btn btn-green review-btn" style="padding:5px 12px;font-size:12px;"
+                                            data-id="{{ leave[0] }}" data-name="{{ leave[1] }}" data-action="approve">✓ Approve</button>
+                                    <button class="btn btn-red review-btn" style="padding:5px 12px;font-size:12px;"
+                                            data-id="{{ leave[0] }}" data-name="{{ leave[1] }}" data-action="reject">✕ Reject</button>
                                 </div>
+                                {% elif leave[6] == 'Approved' %}
+                                <span style="font-size:12px;color:#16a34a;font-weight:600;">→ Forwarded to Admin</span>
                                 {% else %}
                                 <span style="color:#94a3b8;font-size:13px;">—</span>
                                 {% endif %}
                             </td>
                         </tr>
                         {% else %}
-                        <tr class="empty-row"><td colspan="8">No leave requests found.</td></tr>
+                        <tr class="empty-row"><td colspan="9">No leave requests found.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -141,8 +136,8 @@
                     Remarks <span style="color:#94a3b8;font-weight:400;">(optional)</span>
                 </label>
                 <textarea name="remarks" id="remarksInput"
-                    style="width:100%;border:1.5px solid #cbd5e1;border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;resize:vertical;height:100px;outline:none;"
-                    placeholder="Add a remark or reason..."></textarea>
+                    style="width:100%;border:1.5px solid #cbd5e1;border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;resize:vertical;height:90px;outline:none;"
+                    placeholder="Add your remark..."></textarea>
             </div>
             <div style="padding:14px 22px;border-top:1px solid #e2e8f0;display:flex;gap:10px;">
                 <button type="submit" class="btn" id="confirmBtn">Confirm</button>
@@ -154,29 +149,23 @@
 
 <script>
     function openModal(leaveId, userName, action) {
-        var modal = document.getElementById('remarksModal');
-        var form  = document.getElementById('actionForm');
+        var form = document.getElementById('actionForm');
         document.getElementById('modalUser').textContent = userName;
         document.getElementById('remarksInput').value = '';
         form.action = '/faculty/leave/' + leaveId + '/' + action;
-
         var title = document.getElementById('modalTitle');
         var btn   = document.getElementById('confirmBtn');
         if (action === 'approve') {
-            title.textContent = '✓ Approve Leave Request';
-            btn.className = 'btn btn-green';
-            btn.textContent = '✓ Confirm Approval';
+            title.textContent = '✓ Approve & Forward to Admin';
+            btn.className = 'btn btn-green'; btn.textContent = '✓ Approve & Forward';
         } else {
             title.textContent = '✕ Reject Leave Request';
-            btn.className = 'btn btn-red';
-            btn.textContent = '✕ Confirm Rejection';
+            btn.className = 'btn btn-red'; btn.textContent = '✕ Confirm Rejection';
         }
-        modal.style.display = 'flex';
+        document.getElementById('remarksModal').style.display = 'flex';
     }
 
-    function closeModal() {
-        document.getElementById('remarksModal').style.display = 'none';
-    }
+    function closeModal() { document.getElementById('remarksModal').style.display = 'none'; }
 
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.review-btn').forEach(function(btn) {
@@ -184,24 +173,19 @@
                 openModal(btn.dataset.id, btn.dataset.name, btn.dataset.action);
             });
         });
-
         document.getElementById('remarksModal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
         });
-
         var total = document.querySelectorAll('#leavesTable tbody tr:not(.empty-row)').length;
         document.getElementById('countLabel').textContent = total + ' total';
     });
 
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') closeModal();
-    });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
 
     function applyFilters() {
         var search = document.getElementById('searchInput').value.toLowerCase();
         var status = document.getElementById('statusFilter').value.toLowerCase();
         var visible = 0;
-
         document.querySelectorAll('#leavesTable tbody tr:not(.empty-row)').forEach(function(row) {
             var text      = row.textContent.toLowerCase();
             var badge     = row.querySelector('.badge');

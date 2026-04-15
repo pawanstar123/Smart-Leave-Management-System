@@ -1,6 +1,21 @@
 # LeaveOk — Smart Leave Management System
 
-A role-based leave management web app built with Flask and MySQL. Students apply for leaves, faculty review and approve/reject them with remarks, and admins oversee the entire system.
+A three-level role-based leave management web app built with Flask and MySQL.
+Students apply for leaves → Faculty reviews first → Admin gives the final decision.
+
+---
+
+## Approval Flow
+
+```
+Student applies
+      ↓
+Faculty reviews  →  Rejects (final, no Admin needed)
+      ↓ Approves
+Admin reviews    →  Approves / Rejects (final decision)
+      ↓
+Student sees final status with both remarks
+```
 
 ---
 ##  Overview
@@ -25,7 +40,7 @@ It provides separate dashboards for Students, Faculty, and Admin, ensuring effic
 
 ```
 LeaveOk/
-├── app.py                              # All Flask routes, DB logic, auto-reconnect
+├── app.py                              # All routes, DB logic, auto-reconnect helper
 ├── README.md
 │
 ├── static/
@@ -39,25 +54,23 @@ LeaveOk/
     ├── user Dashboard/
     │   ├── user_dashboard.html         # Stats + quick actions
     │   ├── apply_leave.html            # Leave application form
-    │   ├── leave_history.html          # All leave requests table
-    │   ├── leave_status.html           # Status with faculty name & remarks
+    │   ├── leave_history.html          # Leave table with Faculty + Admin stage columns
+    │   ├── leave_status.html           # Visual pipeline — Student → Faculty → Admin
     │   └── user_profile.html           # Tabbed profile — info, password, account
     │
     ├── faculty Dashboard/
-    │   ├── Faculty_Dashboard.html      # Pending stats + quick approve/reject
-    │   └── Faculty_Leave.html          # Full leave table with remarks modal
+    │   ├── Faculty_Dashboard.html      # Pending count, quick approve/reject, flow note
+    │   └── Faculty_Leave.html          # Full table with remarks modal, forwarding note
     │
     └── admin Dashboard/
-        ├── admin_dashboard.html        # System stats + approval progress + recent leaves
-        ├── admin_leaves.html           # Full leave table with approve/reject + filters
+        ├── admin_dashboard.html        # Stats, progress bars, recent leaves pipeline view
+        ├── admin_leaves.html           # Full table — Faculty + Admin columns, awaiting filter
         └── admin_users.html            # All registered users with search
 ```
 
 ---
 
-## Database Setup
-
-Run this in your MySQL client:
+## Database Schema
 
 ```sql
 CREATE DATABASE leave_system;
@@ -75,20 +88,24 @@ CREATE TABLE users (
 );
 
 CREATE TABLE leaves (
-    id           INT AUTO_INCREMENT PRIMARY KEY,
-    user_id      INT,
-    leave_type   VARCHAR(50),
-    from_date    DATE,
-    to_date      DATE,
-    reason       TEXT,
-    status       VARCHAR(20)  DEFAULT 'Pending',
-    faculty_name VARCHAR(100) DEFAULT '',
-    remarks      TEXT         DEFAULT '',
+    id             INT AUTO_INCREMENT PRIMARY KEY,
+    user_id        INT,
+    leave_type     VARCHAR(50),
+    from_date      DATE,
+    to_date        DATE,
+    reason         TEXT,
+    status         VARCHAR(20)  DEFAULT 'Pending',   -- final status
+    faculty_name   VARCHAR(100) DEFAULT '',
+    faculty_status VARCHAR(20)  DEFAULT 'Pending',   -- level 1
+    faculty_remark TEXT         DEFAULT '',
+    admin_status   VARCHAR(20)  DEFAULT 'Pending',   -- level 2
+    admin_remark   TEXT         DEFAULT '',
+    remarks        TEXT         DEFAULT '',
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 ```
 
-> The `phone`, `department`, `bio`, `faculty_name`, and `remarks` columns are added automatically on first run if they don't exist.
+> All extra columns are added automatically on first run — no manual ALTER TABLE needed.
 
 ---
 
@@ -122,13 +139,12 @@ db = mysql.connector.connect(
 **4. Run from the project root**
 
 ```bash
-cd "D:\path\to\Smart-Leave-Management-System"
 python app.py
 ```
 
-Then open `http://127.0.0.1:5000`
+Open `http://127.0.0.1:5000`
 
-> Make sure you run `app.py` from the folder that contains the `templates/` and `static/` directories, not from a subfolder.
+> Always run from the folder containing `templates/` and `static/`. Running from a subfolder causes `TemplateNotFound` errors.
 
 ---
 
@@ -137,46 +153,48 @@ Then open `http://127.0.0.1:5000`
 | Method | Route | Role | Description |
 |--------|-------|------|-------------|
 | GET | `/` | All | Landing page |
-| GET/POST | `/register` | All | Register new user |
+| GET/POST | `/register` | All | Register |
 | GET/POST | `/login` | All | Login |
 | GET | `/logout` | All | Logout |
 | GET | `/user/dashboard` | Student | Dashboard with leave stats |
 | GET/POST | `/user/apply_leave` | Student | Submit a leave request |
-| GET | `/user/leave_history` | Student | View all personal leave requests |
-| GET | `/user/leave_status` | Student | Status with faculty name & remarks |
+| GET | `/user/leave_history` | Student | Table with Faculty + Admin stage columns |
+| GET | `/user/leave_status` | Student | Visual pipeline with both remarks |
 | GET/POST | `/user/profile` | Student | Edit profile, change password |
-| GET | `/faculty/dashboard` | Faculty | Pending leaves overview + quick actions |
-| GET | `/faculty/leaves` | Faculty | All leaves with search, filter, remarks modal |
-| POST | `/faculty/leave/<id>/approve` | Faculty | Approve a leave with remarks |
-| POST | `/faculty/leave/<id>/reject` | Faculty | Reject a leave with remarks |
-| GET | `/admin/dashboard` | Admin | System stats + approval progress + recent requests |
-| GET | `/admin/users` | Admin | All registered users with search |
-| GET | `/admin/leaves` | Admin | All leave requests with filters |
-| POST | `/admin/leave/<id>/approve` | Admin | Approve a leave |
-| POST | `/admin/leave/<id>/reject` | Admin | Reject a leave |
+| GET | `/faculty/dashboard` | Faculty | Pending count + quick review table |
+| GET | `/faculty/leaves` | Faculty | All leaves — filter, search, remarks modal |
+| POST | `/faculty/leave/<id>/approve` | Faculty | Approve → forwards to Admin |
+| POST | `/faculty/leave/<id>/reject` | Faculty | Reject → final, Admin not involved |
+| GET | `/admin/dashboard` | Admin | Stats, progress bars, recent pipeline view |
+| GET | `/admin/users` | Admin | All users with search |
+| GET | `/admin/leaves` | Admin | All leaves with Faculty + Admin columns |
+| GET | `/admin/leaves?status=awaiting` | Admin | Only Faculty-approved, awaiting Admin |
+| POST | `/admin/leave/<id>/approve` | Admin | Final approval |
+| POST | `/admin/leave/<id>/reject` | Admin | Final rejection |
 
 ---
 
 ## User Roles
 
-| Role | Redirected To | Capabilities |
-|------|--------------|--------------|
-| Student | `/user/dashboard` | Apply leave, view history/status, manage profile |
-| Faculty | `/faculty/dashboard` | Review all leaves, approve/reject with remarks |
-| Admin | `/admin/dashboard` | View all users, approve/reject all leaves, system overview |
+| Role | Level | Redirected To | Capabilities |
+|------|-------|--------------|--------------|
+| Student | — | `/user/dashboard` | Apply leave, track pipeline status with both remarks |
+| Faculty | Level 1 | `/faculty/dashboard` | Review all leaves first — approve forwards to Admin, reject is final |
+| Admin | Level 2 | `/admin/dashboard` | Final decision on Faculty-approved leaves only |
 
 ---
 
-## Features
+## Key Features
 
-- Role-based login — auto-redirects to the correct dashboard on sign-in
-- Auto-reconnect DB helper (`q()`) — app stays up even if MySQL connection drops
-- Auto-migration — missing columns added to DB on first run, no manual SQL needed
-- User dashboard with live leave stats (Total / Approved / Pending / Rejected)
-- Faculty dashboard with pending count badge in sidebar, remarks modal for approve/reject
-- Admin dashboard with approval progress bars and recent leave activity
-- Live search and status/type filters on all leave tables (client-side, no page reload)
-- Professional profile page — tabbed layout with personal info, password change, account details
+- Three-level approval pipeline — Student → Faculty → Admin with independent remarks at each stage
+- Faculty rejection is final — Admin is not involved, student sees immediate result
+- Admin only sees Faculty-approved leaves in the "Awaiting" view — clean separation of concerns
+- Auto-reconnect DB helper (`q()`) — app stays up if MySQL connection drops
+- Auto-migration on startup — all new columns added to existing tables automatically
+- Visual approval pipeline on student's Leave Status page — shows each stage with badge + remark
+- Awaiting-only filter on Admin leaves page — highlighted rows for quick action
+- Live search + filter on all leave tables (client-side, no page reload)
+- Remarks modal on Faculty and Admin pages — add remarks before confirming any decision
 - Consistent dark-sidebar theme across all pages via a single shared CSS file
 
 ---
@@ -190,8 +208,8 @@ Then open `http://127.0.0.1:5000`
 
 ## Notes
 
-- Passwords are stored in plain text — hashing with `bcrypt` is strongly recommended before any production use
-- Run `app.py` from the project root directory, not from any subfolder, or Flask won't find the `templates/` folder
+- Passwords are stored in plain text — hashing with `bcrypt` is strongly recommended before production
+- Run `app.py` from the project root, not from any subfolder
 
 ---
 

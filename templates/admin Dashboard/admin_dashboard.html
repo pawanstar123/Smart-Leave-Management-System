@@ -6,42 +6,18 @@
     <title>Admin Dashboard — LeaveOk</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        /* ── Stat card icons ── */
-        .stat-card { display: flex; align-items: center; gap: 16px; }
-        .stat-icon {
-            width: 52px; height: 52px; border-radius: 12px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 22px; flex-shrink: 0;
-        }
-        .stat-icon.blue   { background: #eff6ff; }
-        .stat-icon.green  { background: #f0fdf4; }
-        .stat-icon.yellow { background: #fffbeb; }
-        .stat-icon.red    { background: #fef2f2; }
-        .stat-text h4 { margin-bottom: 4px; }
-        .stat-text p  { font-size: 28px; }
-
-        /* ── Summary mini-bar ── */
-        .summary-bar {
-            display: flex; gap: 8px; align-items: center;
-            margin-top: 6px;
-        }
-        .summary-bar span { font-size: 11px; color: #94a3b8; }
-        .progress-wrap { flex: 1; height: 4px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
-        .progress-fill { height: 100%; border-radius: 4px; }
-
-        /* ── User avatar cell ── */
-        .user-cell { display: flex; align-items: center; gap: 10px; }
-        .mini-avatar {
-            width: 32px; height: 32px; border-radius: 50%;
-            background: linear-gradient(135deg, #4facfe, #00c6ff);
-            display: flex; align-items: center; justify-content: center;
-            color: white; font-weight: 700; font-size: 12px; flex-shrink: 0;
-        }
-        .user-cell-name  { font-size: 14px; font-weight: 600; color: #0f172a; }
-        .user-cell-email { font-size: 12px; color: #94a3b8; }
-
-        /* ── Action buttons tighter ── */
-        .action-group { display: flex; gap: 6px; }
+        .stat-card{display:flex;align-items:center;gap:16px;}
+        .stat-icon{width:52px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+        .stat-icon.blue{background:#eff6ff;} .stat-icon.green{background:#f0fdf4;}
+        .stat-icon.yellow{background:#fffbeb;} .stat-icon.red{background:#fef2f2;}
+        .stat-text h4{margin-bottom:4px;} .stat-text p{font-size:28px;}
+        .user-cell{display:flex;align-items:center;gap:10px;}
+        .mini-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#4facfe,#00c6ff);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:12px;flex-shrink:0;}
+        .action-group{display:flex;gap:6px;}
+        .progress-wrap{flex:1;height:6px;background:#e2e8f0;border-radius:4px;overflow:hidden;}
+        .progress-fill{height:100%;border-radius:4px;}
+        .pipeline-mini{display:flex;align-items:center;gap:4px;font-size:11px;}
+        .pipeline-mini .arrow{color:#cbd5e1;}
     </style>
 </head>
 <body>
@@ -58,6 +34,11 @@
             <a href="/admin/dashboard" class="active"><span class="nav-icon">⊞</span> Dashboard</a>
             <a href="/admin/users"><span class="nav-icon">👥</span> Users</a>
             <a href="/admin/leaves"><span class="nav-icon">📋</span> Leaves</a>
+            <a href="/admin/leaves?status=awaiting"><span class="nav-icon">⚡</span> Awaiting Approval
+                {% if pending_leaves > 0 %}
+                <span style="margin-left:auto;background:#ef4444;color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;">{{ pending_leaves }}</span>
+                {% endif %}
+            </a>
         </nav>
         <div class="sidebar-footer">
             <a href="/logout"><span class="nav-icon">⏻</span> Logout</a>
@@ -68,87 +49,83 @@
         <div class="topbar">
             <div>
                 <h1>Admin Dashboard</h1>
-                <p style="font-size:13px;color:#64748b;margin-top:2px;">Welcome back — here's what's happening today.</p>
+                <p style="font-size:13px;color:#64748b;margin-top:2px;">Level 2 approver — final decision on Faculty-approved leaves.</p>
             </div>
             <div class="user-info">
                 <div class="avatar">A</div>
                 <div>
                     <div style="font-weight:600;font-size:14px;color:#0f172a;">Administrator</div>
-                    <div style="font-size:12px;color:#94a3b8;">Admin</div>
+                    <div style="font-size:12px;color:#94a3b8;">Admin · Final Approver</div>
                 </div>
             </div>
         </div>
 
         <div class="content">
-
-            <!-- ── Stat Cards ── -->
+            <!-- Stat Cards -->
             <div class="cards-grid">
                 <div class="stat-card blue">
                     <div class="stat-icon blue">👥</div>
-                    <div class="stat-text">
-                        <h4>Total Users</h4>
-                        <p>{{ total_users }}</p>
-                    </div>
+                    <div class="stat-text"><h4>Total Users</h4><p>{{ total_users }}</p></div>
                 </div>
                 <div class="stat-card blue">
                     <div class="stat-icon blue">📄</div>
-                    <div class="stat-text">
-                        <h4>Total Leaves</h4>
-                        <p>{{ total_leaves }}</p>
-                    </div>
+                    <div class="stat-text"><h4>Total Leaves</h4><p>{{ total_leaves }}</p></div>
                 </div>
                 <div class="stat-card yellow">
-                    <div class="stat-icon yellow">⏳</div>
-                    <div class="stat-text">
-                        <h4>Pending</h4>
-                        <p>{{ pending_leaves }}</p>
-                    </div>
+                    <div class="stat-icon yellow">⚡</div>
+                    <div class="stat-text"><h4>Awaiting Your Decision</h4><p>{{ pending_leaves }}</p></div>
                 </div>
                 <div class="stat-card green">
                     <div class="stat-icon green">✅</div>
-                    <div class="stat-text">
-                        <h4>Approved</h4>
-                        <p>{{ approved_leaves }}</p>
-                    </div>
+                    <div class="stat-text"><h4>Finally Approved</h4><p>{{ approved_leaves }}</p></div>
                 </div>
             </div>
 
-            <!-- ── Approval progress bar ── -->
+            <!-- Approval pipeline overview -->
             {% if total_leaves > 0 %}
-            <div class="table-card" style="padding:20px 24px; margin-bottom:24px;"
+            <div class="table-card" style="padding:20px 24px;margin-bottom:24px;"
+                 id="overviewCard"
                  data-total="{{ total_leaves }}"
                  data-approved="{{ approved_leaves }}"
-                 data-pending="{{ pending_leaves }}"
-                 id="overviewCard">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-                    <h3 style="font-size:14px;font-weight:700;color:#0f172a;">Leave Approval Overview</h3>
-                    <span style="font-size:12px;color:#64748b;">{{ total_leaves }} total requests</span>
+                 data-pending="{{ pending_leaves }}">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                    <h3 style="font-size:14px;font-weight:700;color:#0f172a;">Three-Level Approval Overview</h3>
+                    <div class="pipeline-mini">
+                        <span style="font-weight:600;color:#4facfe;">Student</span>
+                        <span class="arrow">→</span>
+                        <span style="font-weight:600;color:#f59e0b;">Faculty</span>
+                        <span class="arrow">→</span>
+                        <span style="font-weight:600;color:#22c55e;">Admin</span>
+                    </div>
                 </div>
-                <div style="display:flex; flex-direction:column; gap:10px;">
-                    <div style="display:flex; align-items:center; gap:12px;">
-                        <span style="width:70px;font-size:12px;color:#166534;font-weight:600;">Approved</span>
-                        <div class="progress-wrap" style="flex:1;"><div class="progress-fill" id="bar-approved" style="background:#22c55e;width:0%"></div></div>
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <span style="width:80px;font-size:12px;color:#166534;font-weight:600;">Approved</span>
+                        <div class="progress-wrap"><div class="progress-fill" id="bar-approved" style="background:#22c55e;width:0%"></div></div>
                         <span style="font-size:12px;color:#64748b;width:36px;text-align:right;" id="pct-approved">0%</span>
                     </div>
-                    <div style="display:flex; align-items:center; gap:12px;">
-                        <span style="width:70px;font-size:12px;color:#854d0e;font-weight:600;">Pending</span>
-                        <div class="progress-wrap" style="flex:1;"><div class="progress-fill" id="bar-pending" style="background:#f59e0b;width:0%"></div></div>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <span style="width:80px;font-size:12px;color:#854d0e;font-weight:600;">Awaiting</span>
+                        <div class="progress-wrap"><div class="progress-fill" id="bar-pending" style="background:#f59e0b;width:0%"></div></div>
                         <span style="font-size:12px;color:#64748b;width:36px;text-align:right;" id="pct-pending">0%</span>
                     </div>
-                    <div style="display:flex; align-items:center; gap:12px;">
-                        <span style="width:70px;font-size:12px;color:#991b1b;font-weight:600;">Rejected</span>
-                        <div class="progress-wrap" style="flex:1;"><div class="progress-fill" id="bar-rejected" style="background:#ef4444;width:0%"></div></div>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <span style="width:80px;font-size:12px;color:#991b1b;font-weight:600;">Rejected</span>
+                        <div class="progress-wrap"><div class="progress-fill" id="bar-rejected" style="background:#ef4444;width:0%"></div></div>
                         <span style="font-size:12px;color:#64748b;width:36px;text-align:right;" id="pct-rejected">0%</span>
                     </div>
                 </div>
             </div>
             {% endif %}
 
-            <!-- ── Recent Leave Requests ── -->
+            <!-- Recent leaves table -->
             <div class="table-card">
                 <div class="table-card-header">
                     <h3>Recent Leave Requests</h3>
-                    <a href="/admin/leaves"><button class="btn btn-ghost">View All →</button></a>
+                    <div style="display:flex;gap:8px;">
+                        <a href="/admin/leaves?status=awaiting"><button class="btn btn-blue" style="font-size:12px;padding:6px 12px;">⚡ Awaiting ({{ pending_leaves }})</button></a>
+                        <a href="/admin/leaves"><button class="btn btn-ghost">View All →</button></a>
+                    </div>
                 </div>
                 <table>
                     <thead>
@@ -157,7 +134,9 @@
                             <th>Leave Type</th>
                             <th>From</th>
                             <th>To</th>
-                            <th>Status</th>
+                            <th>Faculty</th>
+                            <th>Admin</th>
+                            <th>Final</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -175,13 +154,25 @@
                             <td>{{ leave[4] }}</td>
                             <td><span class="badge badge-{{ leave[5]|lower }}">{{ leave[5] }}</span></td>
                             <td>
-                                {% if leave[5] == 'Pending' %}
+                                {% if leave[6] == 'N/A' %}
+                                <span style="color:#94a3b8;font-size:12px;">N/A</span>
+                                {% else %}
+                                <span class="badge badge-{{ leave[6]|lower }}">{{ leave[6] }}</span>
+                                {% endif %}
+                            </td>
+                            <td><span class="badge badge-{{ leave[7]|lower }}">{{ leave[7] }}</span></td>
+                            <td>
+                                {% if leave[5] == 'Approved' and leave[6] == 'Pending' %}
                                 <div class="action-group">
                                     <form method="POST" action="/admin/leave/{{ leave[0] }}/approve">
-                                        <button class="btn btn-green" style="padding:5px 12px;font-size:12px;">✓ Approve</button>
+                                        <input type="hidden" name="remarks" value="">
+                                        <button class="btn btn-green" style="padding:5px 10px;font-size:12px;"
+                                                onclick="return confirm('Approve this leave?')">✓</button>
                                     </form>
                                     <form method="POST" action="/admin/leave/{{ leave[0] }}/reject">
-                                        <button class="btn btn-red" style="padding:5px 12px;font-size:12px;">✕ Reject</button>
+                                        <input type="hidden" name="remarks" value="">
+                                        <button class="btn btn-red" style="padding:5px 10px;font-size:12px;"
+                                                onclick="return confirm('Reject this leave?')">✕</button>
                                     </form>
                                 </div>
                                 {% else %}
@@ -190,31 +181,30 @@
                             </td>
                         </tr>
                         {% else %}
-                        <tr class="empty-row"><td colspan="6">No leave requests found.</td></tr>
+                        <tr class="empty-row"><td colspan="8">No leave requests found.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-
         </div>
     </div>
 </div>
-<script>
-    const card = document.getElementById('overviewCard');
-    if (card) {
-        const total    = parseInt(card.dataset.total);
-        const approved = parseInt(card.dataset.approved);
-        const pending  = parseInt(card.dataset.pending);
-        const rejected = total - approved - pending;
 
+<script>
+    var card = document.getElementById('overviewCard');
+    if (card) {
+        var total    = parseInt(card.dataset.total);
+        var approved = parseInt(card.dataset.approved);
+        var pending  = parseInt(card.dataset.pending);
+        var rejected = total - approved - pending;
         function setBar(id, pctId, value) {
-            const pct = Math.round(value / total * 100);
+            var pct = Math.round(value / total * 100);
             document.getElementById(id).style.width = pct + '%';
             document.getElementById(pctId).textContent = pct + '%';
         }
         setBar('bar-approved', 'pct-approved', approved);
         setBar('bar-pending',  'pct-pending',  pending);
-        setBar('bar-rejected', 'pct-rejected', rejected);
+        setBar('bar-rejected', 'pct-rejected', Math.max(0, rejected));
     }
 </script>
 </body>
