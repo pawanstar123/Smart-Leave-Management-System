@@ -454,7 +454,8 @@ def faculty_dashboard():
     )
 
 @app.route('/faculty/leaves')
-# §2.2.3: Faculty views all leave requests with filter by status
+# RTM: FR-03 (D-ARCH-02) — Approve/Reject: faculty views all requests to act on
+# RTM: FR-05 (D-ARCH-03, D-DB-03) — Reporting: filterable leave list for faculty
 def faculty_leaves():
     if not faculty_required():
         return redirect('/login')
@@ -474,8 +475,7 @@ def faculty_leaves():
                            leaves=cursor.fetchall(), status_filter=status_filter)
 
 @app.route('/faculty/leave/<int:leave_id>/approve', methods=['POST'])
-# §2.2.3: Faculty approves → forwards to Admin for final decision
-# §2.2.5 Leave workflow: only authorized approvers can approve leaves
+# RTM: FR-03 (D-ARCH-02) — Approve Leave: faculty Level-1 approval, forwards to Admin
 def faculty_approve_leave(leave_id):
     if not faculty_required():
         return redirect('/login')
@@ -490,8 +490,7 @@ def faculty_approve_leave(leave_id):
     return redirect('/faculty/leaves')
 
 @app.route('/faculty/leave/<int:leave_id>/reject', methods=['POST'])
-# §2.2.3: Faculty rejects → final rejection, Admin not involved
-# §2.2.3: Faculty can add remarks/comments on rejection
+# RTM: FR-03 (D-ARCH-02) — Reject Leave: faculty final rejection with remark
 def faculty_reject_leave(leave_id):
     if not faculty_required():
         return redirect('/login')
@@ -508,16 +507,14 @@ def faculty_reject_leave(leave_id):
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ADMIN ROUTES  (Level 2 approval — only Faculty-approved leaves)
-# §2.2.4 Admin Functional Requirements
-# §2.3.3 Admin: full system access, manages users, final leave approver
+# RTM: FR-03 (D-ARCH-02) — Approve/Reject Leave: admin final decision
+# RTM: FR-05 (D-ARCH-03, D-DB-03) — Reporting & Analytics: admin dashboard
+# RTM: FR-06 (D-SEC-02)  — RBAC: admin_required() enforces Admin-only access
 # ══════════════════════════════════════════════════════════════════════════════
 
-def admin_required():
-    return 'user_id' in session and session.get('role') == 'Admin'
-
 @app.route('/admin/dashboard')
-# §2.2.4: Admin monitors system activity — total users, leaves, pending approvals
-# §2.2.6 Reports: summary analytics shown on dashboard
+# RTM: FR-05 (D-ARCH-03, D-DB-03) — Reporting: total users/leaves/pending/approved
+# RTM: NFR-04 (D-ARCH-04) — Scalability: dashboard handles growing data efficiently
 def admin_dashboard():
     if not admin_required():
         return redirect('/login')
@@ -546,8 +543,8 @@ def admin_dashboard():
     )
 
 @app.route('/admin/users')
-# §2.2.4: Admin manages user accounts — view all registered users with roles
-# §2.3.3 Admin responsibility: manage user accounts
+# RTM: FR-06 (D-SEC-02) — RBAC: admin views all users and their assigned roles
+# RTM: FR-05 (D-ARCH-03) — Reporting: user list with role classification
 def admin_users():
     if not admin_required():
         return redirect('/login')
@@ -555,8 +552,8 @@ def admin_users():
     return render_template('admin Dashboard/admin_users.html', users=cursor.fetchall())
 
 @app.route('/admin/leaves')
-# §2.2.4: Admin views all leave requests; can filter to 'awaiting' (Faculty-approved)
-# §2.2.5: Centralized repository of all leave records
+# RTM: FR-03 (D-ARCH-02) — Approve/Reject: admin sees all leaves, filters awaiting
+# RTM: FR-05 (D-ARCH-03, D-DB-03) — Reporting: centralized leave repository
 def admin_leaves():
     if not admin_required():
         return redirect('/login')
@@ -577,8 +574,8 @@ def admin_leaves():
                            leaves=cursor.fetchall(), status_filter=status_filter)
 
 @app.route('/admin/leave/<int:leave_id>/approve', methods=['POST'])
-# §2.2.4: Admin gives final approval — status set to 'Approved'
-# §2.2.5: Only Faculty-approved leaves reach Admin; workflow enforced
+# RTM: FR-03 (D-ARCH-02) — Final Approval: admin sets status='Approved'
+# RTM: NFR-03 (D-DB-04) — Data Integrity: only Faculty-approved leaves reach here
 def approve_leave(leave_id):
     if not admin_required():
         return redirect('/login')
@@ -590,7 +587,7 @@ def approve_leave(leave_id):
     return redirect('/admin/leaves')
 
 @app.route('/admin/leave/<int:leave_id>/reject', methods=['POST'])
-# §2.2.4: Admin final rejection with optional remark
+# RTM: FR-03 (D-ARCH-02) — Final Rejection: admin sets status='Rejected' with remark
 def reject_leave(leave_id):
     if not admin_required():
         return redirect('/login')
