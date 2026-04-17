@@ -1,4 +1,9 @@
 <!DOCTYPE html>
+<!-- §2.6.1 Student Documentation: profile management — update personal info -->
+<!-- §2.2.1: Change password with current password verification -->
+<!-- §2.2.7 Error Handling: password mismatch/wrong password alerts shown in password tab -->
+<!-- §5.3 Security: current password required before allowing password change -->
+<!-- §5.4 Usability: tabbed interface separates info/password/account cleanly -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -280,14 +285,6 @@
 
                     <!-- Tab: Personal Info -->
                     <div class="tab-panel active" id="tab-info">
-                        {% if pw_status == 'success' %}
-                        <div class="alert alert-success">✓ Password updated successfully.</div>
-                        {% elif pw_status == 'wrong' %}
-                        <div class="alert alert-error">✗ Current password is incorrect.</div>
-                        {% elif pw_status == 'mismatch' %}
-                        <div class="alert alert-error">✗ New passwords do not match.</div>
-                        {% endif %}
-
                         <div class="form-card" style="max-width:100%;">
                             <h3>Personal Information</h3>
                             <form method="POST">
@@ -323,6 +320,13 @@
 
                     <!-- Tab: Change Password -->
                     <div class="tab-panel" id="tab-password">
+                        {% if pw_status == 'success' %}
+                        <div class="alert alert-success">✓ Password updated successfully.</div>
+                        {% elif pw_status == 'wrong' %}
+                        <div class="alert alert-error">✗ Current password is incorrect.</div>
+                        {% elif pw_status == 'mismatch' %}
+                        <div class="alert alert-error">✗ New passwords do not match.</div>
+                        {% endif %}
                         <div class="form-card" style="max-width:100%;">
                             <h3>Change Password</h3>
                             <form method="POST">

@@ -1,4 +1,10 @@
 <!DOCTYPE html>
+<!-- §2.2.4 Admin: Dashboard — system overview, user count, leave stats, pipeline chart -->
+<!-- §2.2.6 Reports & Analytics: summary analytics (approved/pending/rejected %) -->
+<!-- §2.3.3 Admin responsibility: monitor system activity and reports -->
+<!-- §2.2.4: Awaiting approval badge shows Faculty-approved leaves needing Admin action -->
+<!-- §5.1 Performance: analytics bars computed client-side from server data — no extra queries -->
+<!-- §5.4 Usability: progress bars give instant visual overview of leave pipeline health -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -52,9 +58,9 @@
                 <p style="font-size:13px;color:#64748b;margin-top:2px;">Level 2 approver — final decision on Faculty-approved leaves.</p>
             </div>
             <div class="user-info">
-                <div class="avatar">A</div>
+                <div class="avatar">{{ session.get('user_name', 'A')[0]|upper }}</div>
                 <div>
-                    <div style="font-weight:600;font-size:14px;color:#0f172a;">Administrator</div>
+                    <div style="font-weight:600;font-size:14px;color:#0f172a;">{{ session.get('user_name', 'Administrator') }}</div>
                     <div style="font-size:12px;color:#94a3b8;">Admin · Final Approver</div>
                 </div>
             </div>

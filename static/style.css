@@ -4,6 +4,12 @@
    Dark:     #0f172a  (sidebar bg)
    Surface:  #1e293b  (sidebar items)
    BG:       #f1f5f9  (page bg)
+
+   Non-Functional Requirements fulfilled here:
+   §5.4 Usability      — consistent, intuitive UI across all roles
+   §5.4 Usability      — responsive layout (mobile/tablet/desktop via CSS grid)
+   §5.1 Performance    — single CSS file, no external dependencies = fast load
+   §5.4 Maintainability— centralized theme variables, easy to update colors/fonts
    ═══════════════════════════════════════════════ */
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -129,7 +135,7 @@ body.auth-page {
 }
 
 /* ── Dashboard layout ── */
-.layout { display: flex; min-height: 100vh; }
+.layout { display: flex; min-height: 100vh; height: 100vh; overflow: hidden; }
 
 /* Sidebar */
 .sidebar {
@@ -139,6 +145,7 @@ body.auth-page {
     flex-direction: column;
     padding: 0;
     flex-shrink: 0;
+    overflow-y: auto;
 }
 
 .sidebar-brand {
@@ -208,6 +215,7 @@ body.auth-page {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-height: 0;
 }
 
 .topbar {
@@ -242,7 +250,7 @@ body.auth-page {
     font-size: 14px;
 }
 
-.content { padding: 28px; flex: 1; overflow-y: auto; }
+.content { padding: 28px; flex: 1; overflow-y: auto; min-height: 0; }
 
 /* ── Cards ── */
 .cards-grid {

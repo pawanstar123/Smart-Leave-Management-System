@@ -1,4 +1,9 @@
 <!DOCTYPE html>
+<!-- §2.2.1 Authentication: Registration page — users register with name, email, password, role -->
+<!-- §2.2.7 Error Handling: shows error for duplicate email or missing fields -->
+<!-- §2.3 User Classes: role selection (Student / Faculty / Admin) at registration -->
+<!-- §5.3 Security: role assigned at registration, enforced server-side via RBAC -->
+<!-- §5.4 Scalability: new roles can be added to the select dropdown easily -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -17,6 +22,10 @@
             </svg>
         </div>
         <h2>Create account</h2>
+
+        {% if error %}
+        <div class="error-msg">{{ error }}</div>
+        {% endif %}
 
         <form method="POST" action="/register">
             <label>Full Name</label>

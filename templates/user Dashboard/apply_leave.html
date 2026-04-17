@@ -1,4 +1,9 @@
 <!DOCTYPE html>
+<!-- §2.2.2 Student: Apply for leave by selecting leave type, dates, and reason -->
+<!-- §2.2.7 Error Handling: validation errors shown inline (missing fields, bad dates) -->
+<!-- §2.2.5 Leave Workflow: submitted leave enters pipeline with status 'Pending' -->
+<!-- §5.4 Usability: form with clear labels, required fields, and inline error display -->
+<!-- §5.2 Safety: date validation prevents logically invalid leave requests -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -35,7 +40,10 @@
         <div class="content">
             <div class="form-card">
                 <h3>New Leave Application</h3>
-                <form method="POST" action="/user/apply_leave" enctype="multipart/form-data">
+                {% if error %}
+                <div style="background:#fee2e2;color:#991b1b;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;">{{ error }}</div>
+                {% endif %}
+                <form method="POST" action="/user/apply_leave">
                     <div class="form-group">
                         <label>Leave Type</label>
                         <select name="leave_type" required>
@@ -57,10 +65,6 @@
                     <div class="form-group">
                         <label>Reason</label>
                         <textarea name="reason" placeholder="Describe the reason for your leave..." required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Supporting Document</label>
-                        <input type="file" name="document" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
                     </div>
                     <button type="submit" class="btn btn-blue">Submit Application</button>
                 </form>
