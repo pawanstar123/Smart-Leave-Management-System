@@ -68,9 +68,19 @@
 # ============================================================
 from flask import Flask, request, render_template, redirect, session
 import mysql.connector
+import os
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = "smart_leave_secret_key"
+
+# Folder where uploaded documents are saved
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'static', 'uploads')
+ALLOWED_EXTENSIONS = {'pdf'}
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 db = None
 cursor = None
@@ -131,6 +141,7 @@ try:
         ("admin_status",   "VARCHAR(20)  DEFAULT 'Pending'"),
         ("admin_remark",   "TEXT DEFAULT ''"),
         ("remarks",        "TEXT DEFAULT ''"),
+        ("document",       "VARCHAR(255) DEFAULT ''"),   # uploaded PDF filename
     ]:
         try:
             q(f"ALTER TABLE leaves ADD COLUMN {col} {defn}")
@@ -294,17 +305,37 @@ def apply_leave():
             return render_template('user Dashboard/apply_leave.html',
                                    error="All fields are required.")
 
+        # Validate: from_date must not be in the past
+        from datetime import date
+        today = date.today().isoformat()
+        if from_date < today:
+            return render_template('user Dashboard/apply_leave.html',
+                                   error="Leave cannot be applied for past dates. Please select today or a future date.")
+
         # Validate date order
         # §2.2.7 Error Handling: meaningful error for invalid date range
         if from_date > to_date:
             return render_template('user Dashboard/apply_leave.html',
                                    error="'From Date' cannot be after 'To Date'.")
 
+        # Handle optional PDF document upload
+        doc_filename = ''
+        file = request.files.get('document')
+        if file and file.filename:
+            if not allowed_file(file.filename):
+                return render_template('user Dashboard/apply_leave.html',
+                                       error="Only PDF files are allowed for supporting documents.")
+            # Save as uid_timestamp_originalname.pdf to avoid collisions
+            from datetime import datetime
+            safe_name = secure_filename(file.filename)
+            doc_filename = f"{uid}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{safe_name}"
+            file.save(os.path.join(UPLOAD_FOLDER, doc_filename))
+
         q("""INSERT INTO leaves
              (user_id, leave_type, from_date, to_date, reason,
-              status, faculty_status, admin_status)
-             VALUES (%s,%s,%s,%s,%s,'Pending','Pending','Pending')""",
-          (uid, leave_type, from_date, to_date, reason))
+              status, faculty_status, admin_status, document)
+             VALUES (%s,%s,%s,%s,%s,'Pending','Pending','Pending',%s)""",
+          (uid, leave_type, from_date, to_date, reason, doc_filename))
         commit()
         return redirect('/user/leave_history')
 
@@ -318,7 +349,7 @@ def leave_history():
         return redirect('/login')
 
     q("""SELECT id, leave_type, from_date, to_date,
-                faculty_status, admin_status, status
+                faculty_status, admin_status, status, document
          FROM leaves WHERE user_id=%s ORDER BY id DESC""",
       (session['user_id'],))
     return render_template('user Dashboard/leave_history.html', leaves=cursor.fetchall())
@@ -463,12 +494,12 @@ def faculty_leaves():
     status_filter = request.args.get('status', '')
     if status_filter:
         q("""SELECT l.id, u.name, l.leave_type, l.from_date, l.to_date,
-                    l.reason, l.faculty_status, l.faculty_remark
+                    l.reason, l.faculty_status, l.faculty_remark, l.document
              FROM leaves l JOIN users u ON l.user_id = u.id
              WHERE l.faculty_status = %s ORDER BY l.id DESC""", (status_filter,))
     else:
         q("""SELECT l.id, u.name, l.leave_type, l.from_date, l.to_date,
-                    l.reason, l.faculty_status, l.faculty_remark
+                    l.reason, l.faculty_status, l.faculty_remark, l.document
              FROM leaves l JOIN users u ON l.user_id = u.id ORDER BY l.id DESC""")
 
     return render_template('faculty Dashboard/Faculty_Leave.html',

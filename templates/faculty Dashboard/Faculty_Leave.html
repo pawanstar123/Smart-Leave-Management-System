@@ -80,6 +80,7 @@
                             <th>Reason</th>
                             <th>Your Decision</th>
                             <th>Your Remark</th>
+                            <th>Document</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -100,6 +101,14 @@
                             <td><span class="badge badge-{{ leave[6]|lower }}">{{ leave[6] }}</span></td>
                             <td style="font-size:12px;color:#64748b;">{{ leave[7] if leave[7] else '—' }}</td>
                             <td>
+                                {% if leave[8] %}
+                                <a href="{{ url_for('static', filename='uploads/' + leave[8]) }}"
+                                   target="_blank" style="color:#4facfe;font-size:12px;font-weight:600;">📄 PDF</a>
+                                {% else %}
+                                <span style="color:#cbd5e1;font-size:12px;">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
                                 {% if leave[6] == 'Pending' %}
                                 <div class="action-group">
                                     <button class="btn btn-green review-btn" style="padding:5px 12px;font-size:12px;"
@@ -115,7 +124,7 @@
                             </td>
                         </tr>
                         {% else %}
-                        <tr class="empty-row"><td colspan="9">No leave requests found.</td></tr>
+                        <tr class="empty-row"><td colspan="10">No leave requests found.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

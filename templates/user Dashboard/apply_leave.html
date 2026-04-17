@@ -42,7 +42,7 @@
                 {% if error %}
                 <div style="background:#fee2e2;color:#991b1b;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;">{{ error }}</div>
                 {% endif %}
-                <form method="POST" action="/user/apply_leave">
+                <form method="POST" action="/user/apply_leave" enctype="multipart/form-data">
                     <div class="form-group">
                         <label>Leave Type</label>
                         <select name="leave_type" required>
@@ -55,15 +55,22 @@
                     </div>
                     <div class="form-group">
                         <label>From Date</label>
-                        <input type="date" name="from_date" required>
+                        <!-- min set by JS below to today — past dates are disabled -->
+                        <input type="date" name="from_date" id="from_date" required>
                     </div>
                     <div class="form-group">
                         <label>To Date</label>
-                        <input type="date" name="to_date" required>
+                        <!-- min kept in sync with From Date via JS -->
+                        <input type="date" name="to_date" id="to_date" required>
                     </div>
                     <div class="form-group">
                         <label>Reason</label>
                         <textarea name="reason" placeholder="Describe the reason for your leave..." required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Supporting Document <span style="color:#94a3b8;font-weight:400;font-size:12px;">(optional, PDF only)</span></label>
+                        <input type="file" name="document" accept=".pdf" style="padding:8px;">
+                        <div style="font-size:11px;color:#64748b;margin-top:4px;">Upload a medical certificate or other supporting document if required.</div>
                     </div>
                     <button type="submit" class="btn btn-blue">Submit Application</button>
                 </form>
@@ -71,5 +78,22 @@
         </div>
     </div>
 </div>
+<script>
+    // Enforce today as minimum date for both pickers — past dates are not selectable
+    var today = new Date().toISOString().split('T')[0];
+    var fromInput = document.getElementById('from_date');
+    var toInput   = document.getElementById('to_date');
+
+    fromInput.min = today;
+    toInput.min   = today;
+
+    // When From Date changes, keep To Date min in sync so To can't be before From
+    fromInput.addEventListener('change', function () {
+        toInput.min = fromInput.value || today;
+        if (toInput.value && toInput.value < fromInput.value) {
+            toInput.value = fromInput.value;
+        }
+    });
+</script>
 </body>
 </html>

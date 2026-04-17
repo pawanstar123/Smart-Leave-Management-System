@@ -59,6 +59,7 @@
                             <th>Faculty</th>
                             <th>Admin</th>
                             <th>Final Status</th>
+                            <th>Document</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -77,9 +78,20 @@
                                 {% endif %}
                             </td>
                             <td><span class="badge badge-{{ leave[6]|lower }}">{{ leave[6] }}</span></td>
+                            <td>
+                                {% if leave[7] %}
+                                <a href="{{ url_for('static', filename='uploads/' + leave[7]) }}"
+                                   target="_blank"
+                                   style="color:#4facfe;font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px;">
+                                   📄 View PDF
+                                </a>
+                                {% else %}
+                                <span style="color:#cbd5e1;font-size:12px;">—</span>
+                                {% endif %}
+                            </td>
                         </tr>
                         {% else %}
-                        <tr class="empty-row"><td colspan="7">No leave records found.</td></tr>
+                        <tr class="empty-row"><td colspan="8">No leave records found.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
