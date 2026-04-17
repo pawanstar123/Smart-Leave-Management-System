@@ -592,13 +592,13 @@ def admin_leaves():
     status_filter = request.args.get('status', '')
     if status_filter == 'awaiting':
         q("""SELECT l.id, u.name, l.leave_type, l.from_date, l.to_date, l.reason,
-                    l.faculty_status, l.faculty_remark, l.admin_status, l.status
+                    l.faculty_status, l.faculty_remark, l.admin_status, l.status, l.document
              FROM leaves l JOIN users u ON l.user_id = u.id
              WHERE l.faculty_status='Approved' AND l.admin_status='Pending'
              ORDER BY l.id DESC""")
     else:
         q("""SELECT l.id, u.name, l.leave_type, l.from_date, l.to_date, l.reason,
-                    l.faculty_status, l.faculty_remark, l.admin_status, l.status
+                    l.faculty_status, l.faculty_remark, l.admin_status, l.status, l.document
              FROM leaves l JOIN users u ON l.user_id = u.id ORDER BY l.id DESC""")
 
     return render_template('admin Dashboard/admin_leaves.html',

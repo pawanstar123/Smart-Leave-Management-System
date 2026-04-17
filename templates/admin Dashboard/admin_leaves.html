@@ -95,6 +95,7 @@
                             <th>Faculty Remark</th>
                             <th>Admin Decision</th>
                             <th>Final</th>
+                            <th>Document</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -123,6 +124,17 @@
                             </td>
                             <td><span class="badge badge-{{ leave[9]|lower }}">{{ leave[9] }}</span></td>
                             <td>
+                                {% if leave[10] %}
+                                <a href="{{ url_for('static', filename='uploads/' + leave[10]) }}"
+                                   target="_blank"
+                                   style="color:#4facfe;font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px;">
+                                   📄 PDF
+                                </a>
+                                {% else %}
+                                <span style="color:#cbd5e1;font-size:12px;">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
                                 {% if leave[6] == 'Approved' and leave[8] == 'Pending' %}
                                 <div class="action-group">
                                     <button class="btn btn-green review-btn" style="padding:5px 10px;font-size:12px;"
@@ -136,7 +148,7 @@
                             </td>
                         </tr>
                         {% else %}
-                        <tr class="empty-row"><td colspan="11">No leave requests found.</td></tr>
+                        <tr class="empty-row"><td colspan="12">No leave requests found.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
